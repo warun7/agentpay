@@ -1,0 +1,20 @@
+# Secrets — never commit
+.env
+.env.local
+
+# Dependencies / build output
+node_modules/
+dist/
+
+# Runtime artifacts
+*.log
+agentpay.db
+agentpay.db-journal
+agentpay.db-wal
+agentpay.db-shm
+*.db
+
+# OS noise
+.DS_Store
+coverage/
+/task.md
