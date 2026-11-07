@@ -6,45 +6,53 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 :root {
-  /* Razorpay Brand Tokens */
-  --brand-primary: #012652;
-  --brand-accent: #0D94FB;
-  --brand-interface: #305EFF;
-  --brand-gradient: linear-gradient(135deg, #0D94FB 0%, #305EFF 100%);
-  --brand-glow: rgba(13, 148, 251, 0.25);
+  /* ── Blade Design Token Port (dark mode) ──────────────────────────────
+     Source: razorpay/blade packages/blade/src/tokens/global/colors.ts
+     and packages/blade/src/tokens/theme/bladeTheme.ts (onDark palette)
+     ------------------------------------------------------------------ */
 
-  /* Surface Tokens (Dark Mode) */
-  --surface-level1: #0A0E1A; /* Page background */
-  --surface-level2: #111827; /* Card background */
-  --surface-level3: #1A2236; /* Elevated panels / overlays */
-  --surface-level4: #222C44; /* Inset code panels */
-  --surface-border-subtle: rgba(48, 94, 255, 0.14);
-  --surface-border-emphasis: rgba(13, 148, 251, 0.4);
+  /* Primary — azure[500] / azure[600] */
+  --brand-accent:           hsla(218, 89%, 51%, 1);   /* azure[500]  */
+  --brand-accent-hover:     hsla(218, 87%, 43%, 1);   /* azure[600]  */
+  --brand-accent-text:      hsla(218, 100%, 73%, 1);  /* azure[300]  — readable on dark */
+  --brand-accent-bg:        hsla(218, 89%, 51%, 0.1); /* azure.a50   — badge / tint bg */
+  --brand-accent-border:    hsla(218, 89%, 51%, 0.23);/* azure.a100  — badge border */
 
-  /* Feedback Colors */
-  --feedback-positive: #00B87A;
-  --feedback-positive-bg: rgba(0, 184, 122, 0.12);
-  --feedback-negative: #EB4D3D;
-  --feedback-negative-bg: rgba(235, 77, 61, 0.12);
-  --feedback-notice: #F5A623;
-  --feedback-notice-bg: rgba(245, 166, 35, 0.12);
-  --feedback-info: #0D94FB;
-  --feedback-info-bg: rgba(13, 148, 251, 0.12);
-  --feedback-neutral: #8B95A5;
+  /* Surfaces — blueGrayDark scale */
+  --surface-level1:         hsla(210, 4%, 11%, 1);    /* blueGrayDark[1300] — page bg   */
+  --surface-level2:         hsla(210, 6%, 13%, 1);    /* blueGrayDark[1100] — card bg   */
+  --surface-level3:         hsla(210, 5%, 16%, 1);    /* blueGrayDark[1000] — elevated  */
+  --surface-level4:         hsla(210, 4%, 20%, 1);    /* blueGrayDark[900]  — code bg   */
+  --surface-border-subtle:  hsla(216, 4%, 24%, 1);    /* blueGrayDark[800]  — neutral   */
+  --surface-border-emphasis:hsla(218, 89%, 51%, 0.4); /* azure tint for active borders  */
 
-  /* Text Tokens */
-  --text-primary: #F0F4F8;
-  --text-secondary: #A0AEC0;
-  --text-tertiary: #5A6577;
-  --text-code: #E2E8F0;
-  --text-on-action: #FFFFFF;
+  /* Feedback — emerald / crimson / cider */
+  --feedback-positive:      hsla(150, 100%, 28%, 1);  /* emerald[600]  */
+  --feedback-positive-text: hsla(150, 48%, 44%, 1);   /* emerald[400]  — readable on dark */
+  --feedback-positive-bg:   hsla(150, 100%, 28%, 0.1);/* emerald.a50   */
+  --feedback-positive-border:hsla(150, 100%, 28%, 0.23);/* emerald.a100 */
+  --feedback-negative:      hsla(4, 85%, 44%, 1);     /* crimson[600]  */
+  --feedback-negative-text: hsla(5, 76%, 63%, 1);     /* crimson[400]  */
+  --feedback-negative-bg:   hsla(4, 85%, 44%, 0.1);   /* crimson.a50   */
+  --feedback-negative-border:hsla(4, 85%, 44%, 0.23); /* crimson.a100  */
+  --feedback-notice:        hsla(25, 100%, 44%, 1);   /* cider[600]    */
+  --feedback-notice-text:   hsla(22, 100%, 63%, 1);   /* cider[400]    */
+  --feedback-notice-bg:     hsla(25, 100%, 44%, 0.1); /* cider.a50     */
+  --feedback-neutral:       hsla(207, 4%, 52%, 1);    /* blueGrayDark[500] */
+
+  /* Text — blueGrayDark scale */
+  --text-primary:           hsla(0, 0%, 100%, 1);     /* white[500]         */
+  --text-secondary:         hsla(210, 3%, 69%, 1);    /* blueGrayDark[300]  */
+  --text-tertiary:          hsla(207, 4%, 52%, 1);    /* blueGrayDark[500]  */
+  --text-code:              hsla(210, 2%, 84%, 1);    /* blueGrayDark[100]  */
+  --text-on-action:         hsla(0, 0%, 100%, 1);
 
   /* Typography */
   --font-heading: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-mono: 'JetBrains Mono', Menlo, Monaco, Consolas, monospace;
+  --font-body:    'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono:    'JetBrains Mono', Menlo, Monaco, Consolas, monospace;
 
-  /* Spacing Grid (4px base) */
+  /* Spacing — 4px base grid */
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -54,26 +62,23 @@
   --space-8: 32px;
   --space-10: 40px;
 
-  /* Motion Tokens (Blade Specifications) */
-  --duration-2xquick: 80ms;
-  --duration-xquick: 160ms;
-  --duration-quick: 200ms;
+  /* Motion — Blade spec */
+  --duration-2xquick:  80ms;
+  --duration-xquick:   160ms;
+  --duration-quick:    200ms;
   --duration-moderate: 280ms;
-  --duration-xmoderate: 360ms;
-  --duration-gentle: 480ms;
+  --duration-xmoderate:360ms;
+  --duration-gentle:   480ms;
   --duration-2xgentle: 960ms;
 
-  --ease-standard: cubic-bezier(0.3, 0, 0.2, 1);
-  --ease-entrance: cubic-bezier(0, 0, 0.2, 1);
-  --ease-exit: cubic-bezier(0.17, 0, 1, 1);
-  --ease-emphasized: cubic-bezier(0.5, 0, 0, 1);
+  --ease-standard:  cubic-bezier(0.3, 0, 0.2, 1);
+  --ease-entrance:  cubic-bezier(0, 0, 0.2, 1);
+  --ease-exit:      cubic-bezier(0.17, 0, 1, 1);
+  --ease-emphasized:cubic-bezier(0.5, 0, 0, 1);
   --ease-overshoot: cubic-bezier(0.5, 0, 0.3, 1.5);
 
-  /* Elevation */
-  --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.35);
-  --shadow-glow: 0 0 25px rgba(13, 148, 251, 0.2);
-  --glass-bg: rgba(17, 24, 39, 0.75);
-  --glass-blur: blur(16px);
+  /* Elevation — Blade: very subtle, no coloured glows */
+  --shadow-card: 0 1px 4px hsla(0, 0%, 0%, 0.28), 0 0 0 1px hsla(216, 4%, 24%, 1);
 }
 
 /* Reset & Base Styles */
@@ -91,9 +96,6 @@ body {
   -webkit-font-smoothing: antialiased;
   min-height: 100vh;
   overflow-x: hidden;
-  background-image: 
-    radial-gradient(circle at 10% 10%, rgba(13, 148, 251, 0.08) 0%, transparent 40%),
-    radial-gradient(circle at 90% 90%, rgba(48, 94, 255, 0.08) 0%, transparent 40%);
 }
 
 /* Top Navigation Bar */
@@ -101,9 +103,9 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: var(--space-4) var(--space-8);
-  background: var(--glass-bg);
-  backdrop-filter: var(--glass-blur);
+  padding: 0 var(--space-8);
+  height: 56px;
+  background: var(--surface-level2);
   border-bottom: 1px solid var(--surface-border-subtle);
   position: sticky;
   top: 0;
@@ -116,37 +118,29 @@ body {
   gap: var(--space-3);
 }
 
-.brand-glyph {
-  width: 34px;
-  height: 34px;
-  background: var(--brand-gradient);
-  clip-path: polygon(25% 0%, 100% 0%, 75% 100%, 0% 100%);
-  box-shadow: 0 0 15px rgba(13, 148, 251, 0.5);
-}
-
-.brand-name {
-  font-size: 20px;
+.brand-wordmark {
+  font-size: 17px;
   font-weight: 700;
-  letter-spacing: -0.5px;
+  letter-spacing: -0.4px;
   color: var(--text-primary);
-  display: flex;
-  align-items: center;
-  gap: 6px;
 }
 
-.brand-name span {
-  color: var(--brand-accent);
+.nav-divider {
+  width: 1px;
+  height: 18px;
+  background: var(--surface-border-subtle);
+  margin: 0 4px;
 }
 
 .brand-tag {
   font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  padding: 2px 8px;
-  background: rgba(13, 148, 251, 0.15);
-  color: var(--brand-accent);
-  border-radius: 100px;
-  border: 1px solid rgba(13, 148, 251, 0.3);
+  font-weight: 500;
+  letter-spacing: 0.1px;
+  padding: 3px 8px;
+  background: var(--brand-accent-bg);
+  color: var(--brand-accent-text);
+  border-radius: 4px;
+  border: 1px solid var(--brand-accent-border);
 }
 
 .nav-controls {
@@ -159,11 +153,11 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 14px;
-  border-radius: 100px;
+  padding: 5px 12px;
+  border-radius: 4px;
   font-size: 12px;
   font-weight: 500;
-  background: var(--surface-level2);
+  background: var(--surface-level3);
   border: 1px solid var(--surface-border-subtle);
 }
 
@@ -171,8 +165,7 @@ body {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--feedback-positive);
-  box-shadow: 0 0 8px var(--feedback-positive);
+  background: var(--feedback-positive-text);
   animation: pulseDot 2s infinite ease-in-out;
 }
 
@@ -185,7 +178,7 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: var(--brand-gradient);
+  background: var(--brand-accent);
   color: var(--text-on-action);
   border: none;
   padding: 9px 18px;
@@ -193,21 +186,21 @@ body {
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  transition: all var(--duration-quick) var(--ease-standard);
-  box-shadow: 0 2px 10px rgba(13, 148, 251, 0.3);
+  transition: background var(--duration-quick) var(--ease-standard);
+  box-shadow: none;
 }
 
 .btn-primary:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 16px rgba(13, 148, 251, 0.45);
+  background: var(--brand-accent-hover);
 }
 
 .btn-primary:active {
-  transform: translateY(0);
+  background: var(--brand-accent-hover);
+  opacity: 0.9;
 }
 
 .btn-primary:disabled {
-  opacity: 0.5;
+  opacity: 0.38;
   cursor: not-allowed;
 }
 
@@ -237,16 +230,16 @@ body {
 .card {
   background: var(--surface-level2);
   border: 1px solid var(--surface-border-subtle);
-  border-radius: 12px;
+  border-radius: 16px;
   padding: var(--space-5);
-  box-shadow: var(--shadow-card);
+  box-shadow: 0 1px 4px hsla(0, 0%, 0%, 0.28);
   transition: border-color var(--duration-moderate) var(--ease-standard);
   position: relative;
   overflow: hidden;
 }
 
 .card:hover {
-  border-color: var(--surface-border-emphasis);
+  border-color: hsla(216, 4%, 32%, 1);
 }
 
 .card-header {
@@ -255,7 +248,7 @@ body {
   align-items: center;
   margin-bottom: var(--space-4);
   padding-bottom: var(--space-3);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid var(--surface-border-subtle);
 }
 
 .card-title {
@@ -301,15 +294,15 @@ body {
 }
 
 .agent-badge.buyer {
-  background: rgba(13, 148, 251, 0.15);
-  color: var(--brand-accent);
-  border: 1px solid rgba(13, 148, 251, 0.3);
+  background: var(--brand-accent-bg);
+  color: var(--brand-accent-text);
+  border: 1px solid var(--brand-accent-border);
 }
 
 .agent-badge.merchant {
-  background: rgba(0, 184, 122, 0.15);
-  color: var(--feedback-positive);
-  border: 1px solid rgba(0, 184, 122, 0.3);
+  background: var(--feedback-positive-bg);
+  color: var(--feedback-positive-text);
+  border: 1px solid var(--feedback-positive-border);
 }
 
 .agent-name {
@@ -338,7 +331,7 @@ body {
   padding: 6px 10px;
   border-radius: 6px;
   color: var(--text-code);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--surface-border-subtle);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -350,7 +343,8 @@ body {
 }
 
 .field-value:hover {
-  background: rgba(48, 94, 255, 0.2);
+  background: var(--surface-level4);
+  border-color: var(--surface-border-subtle);
 }
 
 /* Panel 2: Protocol State Machine (FSM Graph) */
@@ -399,21 +393,20 @@ body {
 
 .fsm-node.active {
   border-color: var(--brand-accent);
-  background: rgba(13, 148, 251, 0.15);
-  box-shadow: 0 0 15px rgba(13, 148, 251, 0.3);
+  background: var(--brand-accent-bg);
 }
 
 .fsm-node.active .node-name {
-  color: var(--brand-accent);
+  color: var(--brand-accent-text);
 }
 
 .fsm-node.completed {
   border-color: var(--feedback-positive);
-  background: rgba(0, 184, 122, 0.1);
+  background: var(--feedback-positive-bg);
 }
 
 .fsm-node.completed .node-name {
-  color: var(--feedback-positive);
+  color: var(--feedback-positive-text);
 }
 
 .fsm-node.completed::after {
@@ -431,7 +424,7 @@ body {
   height: 320px;
   overflow-y: auto;
   background: var(--surface-level1);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--surface-border-subtle);
   border-radius: 8px;
   padding: var(--space-4);
   display: flex;
@@ -469,13 +462,13 @@ body {
 
 .feed-item.buyer .feed-bubble {
   background: var(--surface-level3);
-  border: 1px solid rgba(13, 148, 251, 0.3);
+  border: 1px solid var(--surface-border-subtle);
   border-bottom-left-radius: 2px;
 }
 
 .feed-item.merchant .feed-bubble {
-  background: rgba(48, 94, 255, 0.15);
-  border: 1px solid rgba(48, 94, 255, 0.4);
+  background: var(--surface-level4);
+  border: 1px solid var(--surface-border-subtle);
   border-bottom-right-radius: 2px;
 }
 
@@ -498,8 +491,9 @@ body {
 }
 
 .feed-badge.enc {
-  background: rgba(0, 184, 122, 0.2);
-  color: var(--feedback-positive);
+  background: var(--feedback-positive-bg);
+  color: var(--feedback-positive-text);
+  border: 1px solid var(--feedback-positive-border);
 }
 
 .feed-json-snippet {
@@ -540,7 +534,7 @@ body {
 
 .code-inspector {
   background: var(--surface-level4);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--surface-border-subtle);
   border-radius: 8px;
   padding: var(--space-4);
   font-family: var(--font-mono);
@@ -565,7 +559,7 @@ body {
   display: flex;
   align-items: center;
   gap: 6px;
-  color: var(--feedback-positive);
+  color: var(--feedback-positive-text);
 }
 
 /* Panel 5: Audit Trail Timeline */
@@ -619,14 +613,12 @@ body {
   background: var(--feedback-positive);
   border-color: var(--feedback-positive);
   color: #fff;
-  box-shadow: 0 0 10px var(--feedback-positive);
 }
 
 .timeline-step.active .step-circle {
   background: var(--brand-accent);
   border-color: var(--brand-accent);
   color: #fff;
-  box-shadow: 0 0 12px var(--brand-accent);
   animation: pulseDot 1.5s infinite;
 }
 
@@ -639,9 +631,9 @@ body {
 
 /* Panel 6: Razorpay Order Card & Controls */
 .order-summary-box {
-  background: linear-gradient(135deg, rgba(1, 38, 82, 0.4) 0%, rgba(17, 24, 39, 0.8) 100%);
-  border: 1px solid rgba(13, 148, 251, 0.3);
-  border-radius: 10px;
+  background: var(--surface-level3);
+  border: 1px solid var(--surface-border-subtle);
+  border-radius: 12px;
   padding: var(--space-5);
   display: flex;
   justify-content: space-between;
@@ -678,14 +670,14 @@ body {
 
 .meta-item .meta-value.amount {
   font-size: 20px;
-  color: var(--brand-accent);
+  color: var(--brand-accent-text);
 }
 
 .crypto-chain-pill {
   font-family: var(--font-mono);
   font-size: 11px;
   padding: 4px 10px;
-  background: rgba(0, 0, 0, 0.4);
+  background: var(--surface-level1);
   border-radius: 6px;
   color: var(--text-secondary);
   display: inline-flex;
@@ -744,7 +736,7 @@ body {
   margin-bottom: 6px;
 }
 .budget-label span:last-child {
-  color: var(--feedback-positive);
+  color: var(--feedback-positive-text);
   font-family: var(--font-mono, monospace);
 }
 .budget-track {
@@ -755,7 +747,7 @@ body {
 }
 .budget-fill {
   height: 100%;
-  background: linear-gradient(90deg, var(--brand-accent), #34d399);
+  background: var(--brand-accent);
   border-radius: 3px;
   transition: width 0.5s ease;
 }
@@ -804,7 +796,7 @@ body {
   margin-top: 6px;
   padding: 8px 10px;
   border-left: 2px solid var(--brand-accent);
-  background: rgba(13, 148, 251, 0.06);
+  background: var(--brand-accent-bg);
   border-radius: 0 6px 6px 0;
   font-size: 11px;
   line-height: 1.5;
