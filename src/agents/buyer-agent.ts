@@ -18,6 +18,7 @@ import type {
   StrategyResult,
 } from '../ai/types.js';
 import { DeterministicBuyerStrategy } from '../ai/strategies/deterministic.js';
+import { CheckoutEvidence } from '../evidence/cool-evidence.js';
 import type { AgentIdentity, VerifiableCredential, SpendingConstraints } from '../identity/types.js';
 import type {
   DIDExchangeMessage,
@@ -42,6 +43,11 @@ export interface BuyerAgentOptions {
   constraints?: SpendingConstraints;
   /** Commercial strategy (default: deterministic). LLM strategies are injected here. */
   strategy?: BuyerStrategy;
+  /**
+   * The buyer's own CooL evidence log (default: a fresh one unless
+   * COOL_EVIDENCE=off). Pass null to disable.
+   */
+  evidence?: CheckoutEvidence | null;
 }
 
 export class BuyerAgent {
@@ -49,11 +55,21 @@ export class BuyerAgent {
   public userWalletIdentity: AgentIdentity;
   public mandate: VerifiableCredential | null = null;
   public strategy: BuyerStrategy;
+  /** Seals every sign/refuse decision of the mandate gate. */
+  public evidence: CheckoutEvidence | null;
+  /** Shared ECDH session id of the latest handshake; both agents derive the same one. */
+  private lastSessionId: string | null = null;
 
   constructor(options: BuyerAgentOptions = {}) {
     this.identity = createAgentIdentity(options.name || 'AgentPay Buyer Agent', 'buyer');
     this.userWalletIdentity = options.userWalletIdentity || createAgentIdentity('User Primary Wallet', 'buyer');
     this.strategy = options.strategy || new DeterministicBuyerStrategy();
+    this.evidence =
+      options.evidence !== undefined
+        ? options.evidence
+        : process.env.COOL_EVIDENCE === 'off'
+          ? null
+          : new CheckoutEvidence('buyer');
 
     if (options.spendingMandate) {
       this.mandate = options.spendingMandate;
@@ -106,6 +122,7 @@ export class BuyerAgent {
    */
   public establishSession(merchantDIDDocument: any): SecureChannel {
     const session = completeHandshake(this.identity, merchantDIDDocument);
+    this.lastSessionId = session.sessionId;
     return new SecureChannel(session);
   }
 
@@ -315,22 +332,43 @@ export class BuyerAgent {
       throw new Error('Cannot evaluate quote without a spending mandate');
     }
 
+    const executionId = this.lastSessionId ?? `quote:${quote.quoteId}`;
+    const constraints = this.mandate.credentialSubject.spendingConstraints;
+    const decisionTerms = {
+      quoteId: quote.quoteId,
+      cartId: quote.cartId,
+      totalAmount: quote.totalAmount,
+      currency: quote.currency,
+      category,
+      merchantDID,
+      mandateId: this.mandate.id,
+      mandateMaxAmount: constraints.maxAmount,
+    };
+    const refuse = async (gate: 'quote-signature' | 'mandate-bounds', reason: string): Promise<never> => {
+      await this.evidence?.seal('agentpay.quote.refused', executionId, { ...decisionTerms, gate, reason }, { input: quote });
+      throw new Error(
+        gate === 'quote-signature'
+          ? `Quote signature verification failed — refusing to sign: ${reason}`
+          : `Quote rejected by deterministic mandate bounds checker: ${reason}`
+      );
+    };
+
     // ── P1 GATE: quote must be verifiably signed by the expected merchant ──
     // This runs BEFORE mandate approval — a tampered amount, swapped UPI ID,
     // or modified recommendation can never reach a signed transaction.
     const sigCheck = await verifyQuoteSignature(quote, merchantSigningPublicKeyJwk);
     if (!sigCheck.valid) {
-      throw new Error(`Quote signature verification failed — refusing to sign: ${sigCheck.reason}`);
+      return refuse('quote-signature', sigCheck.reason ?? 'invalid quote signature');
     }
 
     // Deterministic bounds evaluation against the Verifiable Credential mandate
     const evaluation = evaluateQuoteAgainstMandate(quote, this.mandate, category, merchantDID);
     if (!evaluation.approved) {
-      throw new Error(`Quote rejected by deterministic mandate bounds checker: ${evaluation.reason}`);
+      return refuse('mandate-bounds', evaluation.reason ?? 'mandate bounds violated');
     }
 
     // Cryptographically sign the transaction payload with Ed25519 private key
-    return await signTransactionPayload(
+    const signedTx = await signTransactionPayload(
       quote,
       {
         did: this.identity.did,
@@ -338,6 +376,14 @@ export class BuyerAgent {
       },
       merchantDID
     );
+
+    await this.evidence?.seal(
+      'agentpay.quote.signed',
+      executionId,
+      { ...decisionTerms, transactionId: signedTx.transactionId, nonce: signedTx.nonce, amount: signedTx.amount },
+      { input: quote, output: signedTx }
+    );
+    return signedTx;
   }
 
   /**

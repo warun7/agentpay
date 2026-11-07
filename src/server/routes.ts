@@ -14,6 +14,14 @@ import { paymentBus } from '../payment/webhook-events.js';
 import { broadcastProtocolEvent } from './websocket.js';
 import type { UAPProofBundle } from '../payment/types.js';
 import type { StateTransitionEvent } from '../protocol/state-machine.js';
+import type { SealedCheckoutEvent } from '../evidence/cool-evidence.js';
+
+/** Compact view of a sealed CooL record for the live feed. */
+const summarizeEvidence = (e: SealedCheckoutEvent) => ({
+  party: e.party,
+  type: e.type,
+  recordId: e.recordId,
+});
 
 // Runtime validation schema for demo run requests
 const DemoRunRequestSchema = z.object({
@@ -258,6 +266,17 @@ export const routes: FastifyPluginAsync<{ merchantAgent: MerchantAgent }> = asyn
       const settlementReceipt = fromMerchant<any>(receiptEnvelope);
       const proofBundle = merchantSession.getProofBundle();
 
+      // CooL: what each agent sealed for the primary checkout. Emitted before
+      // RUN_COMPLETE so the feed's terminal-event contract is unchanged.
+      const executionId = buyerChannel.getSession().sessionId;
+      const sealedSoFar = [
+        ...(buyer.evidence?.forExecution(executionId) ?? []),
+        ...(merchant.evidence?.forExecution(executionId) ?? []),
+      ];
+      if (sealedSoFar.length > 0) {
+        emitFeed('COOL_EVIDENCE', { executionId, sealed: sealedSoFar.map(summarizeEvidence) });
+      }
+
       emitFeed('RUN_COMPLETE', {
         transactionId: settlementReceipt.transactionId,
         amount: settlementReceipt.amount,
@@ -344,9 +363,24 @@ export const routes: FastifyPluginAsync<{ merchantAgent: MerchantAgent }> = asyn
         } catch { /* ledger best-effort */ }
       }
 
+      // CooL evidence: each agent sealed its own decisions under the shared
+      // ECDH session id (upsell rounds included). Receipts + both key
+      // directories go back to the caller so anyone can verify them offline.
+      const merchantEvidence = merchant.evidence?.forExecution(executionId) ?? [];
+      const buyerEvidence = buyer.evidence?.forExecution(executionId) ?? [];
+
       return {
         success: true,
         runId,
+        coolEvidence: {
+          executionId,
+          merchant: merchantEvidence.map((e) => ({ ...summarizeEvidence(e), evidence: e.evidence })),
+          buyer: buyerEvidence.map((e) => ({ ...summarizeEvidence(e), evidence: e.evidence })),
+          keys: {
+            merchant: merchant.evidence?.keyDirectory ?? null,
+            buyer: buyer.evidence?.keyDirectory ?? null,
+          },
+        },
         transactionId: settlementReceipt.transactionId,
         buyerDID: buyer.getDID(),
         merchantDID: merchant.getDID(),
@@ -389,6 +423,30 @@ export const routes: FastifyPluginAsync<{ merchantAgent: MerchantAgent }> = asyn
         name: error.name,
       };
     }
+  });
+
+  // 4b. CooL: the merchant's published key directory. Verifiers pin THESE
+  // keys; the keys embedded in a receipt are never trusted on their own.
+  fastify.get('/api/cool/keys', async (_request, reply) => {
+    if (!merchant.evidence) {
+      reply.status(404);
+      return { enabled: false, error: 'CooL evidence is disabled (COOL_EVIDENCE=off)' };
+    }
+    return { enabled: true, party: 'merchant', keyDirectory: merchant.evidence.keyDirectory };
+  });
+
+  // 4c. CooL: the merchant's sealed records for one checkout session.
+  fastify.get('/api/cool/evidence/:executionId', async (request, reply) => {
+    const { executionId } = request.params as { executionId: string };
+    const records = merchant.evidence?.forExecution(executionId) ?? [];
+    if (records.length === 0) {
+      reply.status(404);
+      return { error: `No CooL evidence for execution ${executionId}` };
+    }
+    return {
+      executionId,
+      records: records.map((e) => ({ ...summarizeEvidence(e), evidence: e.evidence })),
+    };
   });
 
   // 5. Query Audit Trail

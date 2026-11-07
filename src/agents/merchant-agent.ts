@@ -38,6 +38,7 @@ import { SpendLedger } from '../identity/credentials.js';
 import type { MerchantStrategy, PricingDecision, StrategyResult } from '../ai/types.js';
 import { DeterministicMerchantStrategy } from '../ai/strategies/deterministic.js';
 import { DISCOUNT_FLOOR, DISCOUNT_CAP } from '../ai/strategies/gemini-merchant.js';
+import { CheckoutEvidence, type SealedCheckoutEvent } from '../evidence/cool-evidence.js';
 
 export interface StoredTransactionRecord {
   transactionId: string;
@@ -95,6 +96,11 @@ export interface MerchantAgentOptions {
   strategy?: MerchantStrategy;
   /** Durable ledger (default: SQLite via env, memory fallback). */
   persistence?: PersistenceStore;
+  /**
+   * The merchant's own CooL evidence log (default: a fresh one unless
+   * COOL_EVIDENCE=off). Pass null to disable.
+   */
+  evidence?: CheckoutEvidence | null;
 }
 
 /** Audit trace entry for strategy decisions (UI reasoning cards / pitch evidence). */
@@ -132,8 +138,16 @@ export class MerchantAgent {
   public pendingUpsellAttribution: { recommendationsOffered: number } | null = null;
   /** Durable ledger — transactions, confirmations, audit events survive restarts. */
   public persistence: PersistenceStore;
+  /** Seals mandate, quote, settlement and rejection decisions into a CooL log. */
+  public evidence: CheckoutEvidence | null;
 
   constructor(options: MerchantAgentOptions = {}) {
+    this.evidence =
+      options.evidence !== undefined
+        ? options.evidence
+        : process.env.COOL_EVIDENCE === 'off'
+          ? null
+          : new CheckoutEvidence('merchant');
     this.identity = createAgentIdentity(options.name || 'AgentPay Cloud Merchant', 'merchant');
     this.upiId = options.upiId || 'agentpay.merchant@razorpay';
     this.catalog = options.catalog || [...DEFAULT_CATALOG];
@@ -268,11 +282,17 @@ export class MerchantAgent {
       return msg;
     };
 
+    // CooL execution id: the ECDH session id, which buyer and merchant derive
+    // identically, so both parties' evidence for one checkout correlates.
+    const sessionIdOf = (): string => channel?.getSession().sessionId ?? 'pre-session';
+
     return {
       fsm,
       getChannel: () => channel,
       getProofBundle: () => latestProofBundle,
       getStrategyTrace: (): StrategyTraceEntry[] => [...strategyTrace],
+      /** CooL records the merchant sealed for this session, oldest first. */
+      getEvidence: (): SealedCheckoutEvent[] => this.evidence?.forExecution(sessionIdOf()) ?? [],
 
       // 1. Handshake with Buyer's DID Exchange
       handleDIDExchange: (rawMessage: unknown): DIDExchangeMessage => {
@@ -310,8 +330,21 @@ export class MerchantAgent {
         const vc = message.verifiableCredential;
         const verification = await verifyMandateCredential(vc, issuerPublicKeyJwk);
 
+        const mandateTerms = {
+          vcId: vc.id,
+          issuer: vc.issuer,
+          subject: vc.credentialSubject.id,
+          spendingConstraints: vc.credentialSubject.spendingConstraints,
+        };
+
         if (!verification.valid) {
           fsm.transitionToError('VERIFY_MANDATE', verification.reason || 'Invalid mandate signature');
+          await this.evidence?.seal(
+            'agentpay.mandate.rejected',
+            sessionIdOf(),
+            { ...mandateTerms, reason: verification.reason || 'Invalid mandate signature' },
+            { input: vc }
+          );
           throw new Error(`Mandate verification failed: ${verification.reason}`);
         }
 
@@ -321,6 +354,7 @@ export class MerchantAgent {
           maxAmount: vc.credentialSubject.spendingConstraints.maxAmount,
           categories: vc.credentialSubject.spendingConstraints.allowedCategories,
         });
+        await this.evidence?.seal('agentpay.mandate.verified', sessionIdOf(), mandateTerms, { input: vc });
 
         return wrapOutgoing(
           { verified: true, message: 'Mandate signature and constraints verified successfully' },
@@ -399,6 +433,31 @@ export class MerchantAgent {
 
         currentQuote = quote;
         fsm.transition('QUOTE_RECEIVED', 'GENERATE_SIGNED_QUOTE', quote);
+
+        // "The AI proposes, the protocol disposes" — sealed: what the strategy
+        // asked for, what the protocol applied, and whether it was clamped.
+        await this.evidence?.seal(
+          'agentpay.quote.issued',
+          sessionIdOf(),
+          {
+            quoteId: quote.quoteId,
+            cartId: quote.cartId,
+            itemId: firstItem.id,
+            strategySource: pricing.source,
+            strategyAttempts: pricing.attempts,
+            discountRequested: requested,
+            discountApplied: applied,
+            clamped: wasClamped,
+            subtotal: quote.subtotal,
+            discount: quote.discount,
+            tax: quote.tax,
+            totalAmount: quote.totalAmount,
+            currency: quote.currency,
+            merchantUpiId: quote.merchantUpiId,
+            recommendationsOffered: quote.recommendations?.length ?? 0,
+          },
+          { input: intent, output: quote }
+        );
         return wrapOutgoing(quote, secure);
       },
 
@@ -411,52 +470,73 @@ export class MerchantAgent {
         // Runtime Zod validation at boundary
         const signedTx = TransactionPayloadSchema.parse(msg);
 
-        if (!buyerMandate) {
-          throw new Error('Cannot process transaction without a verified buyer mandate');
-        }
-
-        // ── BUG 2 FIX: Nonce idempotency check BEFORE settlement ──
-        if (this.transactionStore.has(signedTx.nonce)) {
-          const existingRecord = this.transactionStore.get(signedTx.nonce)!;
-          if (existingRecord.receipt) {
-            // Idempotent: return the existing receipt instead of double-charging
-            return wrapOutgoing(existingRecord.receipt, secure);
+        // Every gate below that throws is sealed as a rejection before the
+        // error propagates — a refused payment leaves evidence too.
+        let mandateForSettlement: VerifiableCredential;
+        try {
+          if (!buyerMandate) {
+            throw new Error('Cannot process transaction without a verified buyer mandate');
           }
-          throw new Error(`Duplicate nonce rejected: transaction ${existingRecord.transactionId} already in progress for nonce ${signedTx.nonce}`);
-        }
+          mandateForSettlement = buyerMandate;
 
-        fsm.transition('SIGNED', 'RECEIVE_SIGNED_TRANSACTION', signedTx);
+          // ── BUG 2 FIX: Nonce idempotency check BEFORE settlement ──
+          if (this.transactionStore.has(signedTx.nonce)) {
+            const existingRecord = this.transactionStore.get(signedTx.nonce)!;
+            if (existingRecord.receipt) {
+              // Idempotent: return the existing receipt instead of double-charging
+              return wrapOutgoing(existingRecord.receipt, secure);
+            }
+            throw new Error(`Duplicate nonce rejected: transaction ${existingRecord.transactionId} already in progress for nonce ${signedTx.nonce}`);
+          }
 
-        // Verify Buyer Agent's detached Ed25519 signature
-        if (!channel) {
-          throw new Error('Secure channel not established');
-        }
-        const { signingKeyJwk } = extractKeysFromDIDDocument(channel.getSession().peerDIDDocument);
-        
-        // JWS verification
-        const { payload: verifiedPayload } = await verifyCompactJWS<any>(
-          signedTx.jwsSignature,
-          signingKeyJwk
-        );
+          fsm.transition('SIGNED', 'RECEIVE_SIGNED_TRANSACTION', signedTx);
 
-        // ── P3 GATE: full payload/visibility match + DID addressing + freshness ──
-        assertSignedTransactionMatchesPayload(signedTx, verifiedPayload, this.identity.did);
-        if (signedTx.buyerDID !== channel.getSession().peerDID) {
-          throw new Error(
-            `Transaction buyerDID ${signedTx.buyerDID} does not match the established peer ${channel.getSession().peerDID}`
+          // Verify Buyer Agent's detached Ed25519 signature
+          if (!channel) {
+            throw new Error('Secure channel not established');
+          }
+          const { signingKeyJwk } = extractKeysFromDIDDocument(channel.getSession().peerDIDDocument);
+
+          // JWS verification
+          const { payload: verifiedPayload } = await verifyCompactJWS<any>(
+            signedTx.jwsSignature,
+            signingKeyJwk
           );
-        }
-        const ageMs = Date.now() - Date.parse(signedTx.timestamp);
-        if (!Number.isFinite(ageMs) || Math.abs(ageMs) > SIGNED_TX_MAX_AGE_MS) {
-          throw new Error(
-            `Stale or malformed signed transaction rejected: timestamp ${signedTx.timestamp} outside ±${SIGNED_TX_MAX_AGE_MS / 1000}s window`
+
+          // ── P3 GATE: full payload/visibility match + DID addressing + freshness ──
+          assertSignedTransactionMatchesPayload(signedTx, verifiedPayload, this.identity.did);
+          if (signedTx.buyerDID !== channel.getSession().peerDID) {
+            throw new Error(
+              `Transaction buyerDID ${signedTx.buyerDID} does not match the established peer ${channel.getSession().peerDID}`
+            );
+          }
+          const ageMs = Date.now() - Date.parse(signedTx.timestamp);
+          if (!Number.isFinite(ageMs) || Math.abs(ageMs) > SIGNED_TX_MAX_AGE_MS) {
+            throw new Error(
+              `Stale or malformed signed transaction rejected: timestamp ${signedTx.timestamp} outside ±${SIGNED_TX_MAX_AGE_MS / 1000}s window`
+            );
+          }
+        } catch (err: any) {
+          await this.evidence?.seal(
+            'agentpay.transaction.rejected',
+            sessionIdOf(),
+            {
+              transactionId: signedTx.transactionId,
+              nonce: signedTx.nonce,
+              amount: signedTx.amount,
+              currency: signedTx.currency,
+              buyerDID: signedTx.buyerDID,
+              reason: err?.message ?? String(err),
+            },
+            { input: signedTx }
           );
+          throw err;
         }
 
         // Execute payment settlement via Razorpay Gateway (UPI Reserve Pay / UAP)
         const { receipt, bundle } = await processAgenticCheckout({
           signedTransaction: signedTx,
-          buyerMandate,
+          buyerMandate: mandateForSettlement,
           gateway: this.gateway,
         });
 
@@ -537,6 +617,26 @@ export class MerchantAgent {
           razorpayPaymentId: receipt.razorpayPaymentId,
           auditDigest: receipt.cryptographicAuditDigest,
         });
+
+        await this.evidence?.seal(
+          'agentpay.payment.settled',
+          sessionIdOf(),
+          {
+            transactionId: signedTx.transactionId,
+            nonce: signedTx.nonce,
+            quoteId: currentQuote?.quoteId,
+            amount: receipt.amount,
+            currency: receipt.currency,
+            buyerDID: signedTx.buyerDID,
+            merchantDID: this.identity.did,
+            receiptId: receipt.receiptId,
+            razorpayOrderId: receipt.razorpayOrderId,
+            razorpayPaymentId: receipt.razorpayPaymentId,
+            auditDigest: receipt.cryptographicAuditDigest,
+            isUpsellRound,
+          },
+          { input: signedTx, output: receipt }
+        );
 
         return wrapOutgoing(receipt, secure);
       },
