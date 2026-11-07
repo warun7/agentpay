@@ -25,7 +25,7 @@ import {
 import type { QuoteMessage } from '../src/protocol/schemas.js';
 
 /**
- * Judge Remediation — P1 quote signatures, P2 currency bounds,
+ * Security hardening — P1 quote signatures, P2 currency bounds,
  * P3 full txn verification + freshness, P4 envelope freshness,
  * P5 durable ledger, P6 honest gateway modes.
  */
@@ -33,7 +33,7 @@ import type { QuoteMessage } from '../src/protocol/schemas.js';
 // ── Shared fixtures ──────────────────────────────────────────────────────────
 
 async function makeSignedQuote(opts?: { tamper?: (q: any) => void; foreignKey?: boolean }) {
-  const merchant = new MerchantAgent({ name: 'Remediation Merchant' });
+  const merchant = new MerchantAgent({ name: 'Hardening Merchant' });
   const buyer = new BuyerAgent();
   await buyer.provisionMandate({
     maxAmount: 900000, currency: 'INR',

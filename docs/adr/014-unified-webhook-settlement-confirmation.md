@@ -8,7 +8,7 @@
 
 AgentPay has two gateway modes: mock/UAP-simulated (default) and Razorpay test-mode Orders API. Previously, settlement confirmation happened inline inside `processAgenticCheckout` — the receipt was declared `CAPTURED` the moment the simulated capture returned. Nothing existed to receive real Razorpay webhook deliveries, and no component distinguished "gateway said captured" from "we decided it was captured."
 
-For judges and for production honesty, capture **confirmation** must be a distinct, verifiable event — and it must work identically in both modes.
+For auditability and production honesty, capture **confirmation** must be a distinct, verifiable event — and it must work identically in both modes.
 
 ## Decision
 

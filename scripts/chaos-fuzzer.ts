@@ -64,7 +64,6 @@ async function runChaosFuzzer() {
   console.clear();
   console.log(`\n${colors.bright}${colors.cyan}╔══════════════════════════════════════════════════════════════════════════════╗${colors.reset}`);
   console.log(`${colors.bright}${colors.cyan}║  AGENTPAY CRYPTOGRAPHIC CHAOS FUZZER & ADVERSARIAL STRESS BENCHMARKER        ║${colors.reset}`);
-  console.log(`${colors.bright}${colors.cyan}║  Track 01: AI Growth & Agentic Commerce (UAP & Razorpay UPI Reserve Pay)     ║${colors.reset}`);
   console.log(`${colors.bright}${colors.cyan}╚══════════════════════════════════════════════════════════════════════════════╝${colors.reset}\n`);
 
   let unhandledExceptions = 0;

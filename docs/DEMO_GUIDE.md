@@ -1,6 +1,6 @@
 # AgentPay — Self-Demo Guide
 
-How to run the product yourself, what to watch for at every step, and what "working correctly" looks like. Judges' questions usually map 1:1 to a checkbox here.
+How to run the product yourself, what to watch for at every step, and what "working correctly" looks like.
 
 ---
 
@@ -102,9 +102,9 @@ Atomicity (network drop after signing) is covered by `tests/atomicity.test.ts` �
 | Chat REJECTED unexpectedly | Read the card's rationale: mandate cap vs cheapest SKU. Working as intended |
 | `REC_OFFERED` doesn't always appear | Only when remaining budget fits a recommendation — budget-dependent by design |
 
-## Judge-question → live-answer map
+## Common questions → where to look
 
-| If asked… | Do this |
+| Question | Where to look |
 |---|---|
 | "Can the LLM overspend?" | Show guardrail chip reject OR explain HARD OVERRIDE path (`ai-strategy.test.ts`) |
 | "Prove messages are encrypted" | Proof Inspector → ECDH tab; `tests/secure-envelope.test.ts`; ADR-006/013 |

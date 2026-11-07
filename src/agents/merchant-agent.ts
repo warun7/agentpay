@@ -103,7 +103,7 @@ export interface MerchantAgentOptions {
   evidence?: CheckoutEvidence | null;
 }
 
-/** Audit trace entry for strategy decisions (UI reasoning cards / pitch evidence). */
+/** Audit trace entry for strategy decisions (UI reasoning cards and audit trace). */
 export interface StrategyTraceEntry {
   step: 'priceIntent';
   itemId: string;

@@ -47,7 +47,7 @@ describe('FailoverLLMClient', () => {
 
     expect(geminiCalls).toBe(1);
     expect(chain.activeProvider).toBe('openrouter');
-    // Provider-labeled provenance — judges can see WHO decided
+    // Provider-labeled provenance — the trace shows WHO decided
     expect(result.source).toBe('llm-openrouter');
     expect(result.decision.itemId).toBe('item_gpu_h100_cluster');
   });
