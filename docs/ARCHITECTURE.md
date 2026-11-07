@@ -1,5 +1,37 @@
 # AgentPay Architecture
 
+> **Read time:** 60 seconds for the skim, ~10 minutes for the full document.
+
+## 60-Second Skim
+
+**What it is:** Two AI agents (buyer + merchant) negotiate and settle a purchase autonomously. The LLM only ever *proposes* — every money-moving decision is checked by deterministic, non-LLM code before it can take effect.
+
+**The one-line flow:**
+
+```
+Buyer Agent  <-- encrypted, signed protocol -->  Merchant Agent  -->  Razorpay  -->  Webhook/Event Bus  -->  Live Dashboard
+(LLM proposes)                                   (LLM proposes)      (real order)   (confirms settlement)
+```
+
+**The four deterministic gates every transaction must pass** (none reachable from the LLM):
+
+1. **Zod firewall** — malformed/hallucinated LLM output is rejected and retried before it ever becomes a protocol message.
+2. **Semantic clamps** — e.g. discount is hard-capped to [5%, 15%] regardless of what the LLM proposes.
+3. **`checkMandateBounds`** — the signed spending-mandate Verifiable Credential caps amount, category, merchant, and cumulative daily spend. A strategy's "accept" can be overridden to a hard reject; it can never override a reject.
+4. **Protocol FSM** — a strict linear state machine; any out-of-order or illegal transition throws immediately.
+
+**Why you can trust the receipt:** every transaction is bound together by a SHA-256 audit digest chaining the mandate hash, the buyer's Ed25519 signature, the Razorpay order/payment IDs, and a replay-proof nonce — independently verifiable without trusting either agent.
+
+**By the numbers:** 93 automated tests · 14 ADRs · 10,000-case adversarial chaos fuzzer · 4 sequential gates · 1 invariant ("the AI proposes, the protocol disposes").
+
+**Jump to:** [Component Overview](#component-overview) · [Checkout Sequence](#checkout-sequence-happy-path) · [Failure Recovery](#failure-recovery-atomicity) · [Trust Boundaries](#trust-boundaries) · [Key Invariants](#key-invariants-enforced-by-tests)
+
+---
+
+## Full Architecture
+
+The rest of this document is the detailed reference: component diagrams, the full message sequence, failure-recovery mechanics, trust-boundary reasoning, and the invariant-to-test mapping.
+
 ## Component Overview
 
 ```mermaid
