@@ -27,5 +27,5 @@ We enforce **nonce-based idempotency at the top of `handleSignedTransaction`**, 
 - **Complements reconciliation:** Works in tandem with ADR-009's two-phase reconciliation — the buyer can reconnect and resubmit without risk.
 
 ### Negative / Trade-offs
-- **In-memory store:** The current `transactionStore` is a `Map` — it does not survive process restarts. For production, this would need to be backed by a persistent store (Redis/PostgreSQL). Acceptable for hackathon scope.
+- **In-memory store:** The current `transactionStore` is a `Map` — it does not survive process restarts. For production, this would need to be backed by a persistent store (Redis/PostgreSQL). Acceptable for a single-process deployment.
 - **Nonce collision:** UUID v4 collision probability is ~1 in 2^122 — effectively zero.

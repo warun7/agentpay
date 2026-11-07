@@ -29,5 +29,5 @@ We implement a **`SpendLedger` singleton** that tracks per-subject-DID cumulativ
 - **Testable in isolation:** `SpendLedger.reset()` allows clean test setup without cross-test contamination.
 
 ### Negative / Trade-offs
-- **In-memory singleton:** Does not persist across process restarts and is not shared across horizontally scaled instances. Acceptable for hackathon; production would use Redis with TTL-based expiration.
-- **Lazy pruning:** Expired entries are only cleaned when `getDailySpend` is called, not proactively. Memory impact is negligible for hackathon traffic volumes.
+- **In-memory singleton:** Does not persist across process restarts and is not shared across horizontally scaled instances. Acceptable for a single instance; production would use Redis with TTL-based expiration.
+- **Lazy pruning:** Expired entries are only cleaned when `getDailySpend` is called, not proactively. Memory impact is negligible at current traffic volumes.

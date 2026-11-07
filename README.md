@@ -1,7 +1,5 @@
 # AgentPay — Cryptographically Verifiable Agent-to-Agent Checkout
 
-> **Track 01: AI Growth & Agentic Commerce** · Razorpay AI Buildathon 2026
->
 > Two sovereign AI agents negotiate and settle autonomously — bounded by signed spending mandates, encrypted end-to-end, with an audit trail a third party can verify without trusting either agent.
 >
 > **Payment honesty:** Razorpay **test-mode Orders API** when configured (`RAZORPAY_MOCK_MODE=false`); UAP/UPI Reserve Pay autonomous capture is **simulated** until those NPCI rails are available. Mock and live test-mode share the same confirmation pipeline (ADR-014).
@@ -86,17 +84,17 @@ Full analysis: [docs/SECURITY.md](docs/SECURITY.md). Design decisions: [docs/adr
 | Double-charging impossible | Nonce idempotency guard before any gateway call |
 | Receipts are verifiable | SHA-256 audit digest chaining VC hash ‖ JWS hash ‖ orderId ‖ paymentId ‖ nonce |
 
-## Track 01 Judging Bar — Compliance
+## Money-Action Guarantees
 
-> *"Every money action explainable, bounded and gated. Show the audit trail and one failure handled gracefully."*
+Every action that moves money is explainable, bounded and gated, leaves an audit trail, and fails safely.
 
-- ✅ **Explainable** — every decision carries a cached rationale surfaced as "Why?" cards; `/api/demo/run` returns the full `reasoning{}` block (intent decision, quote evaluation, pricing trace with clamp annotations).
-- ✅ **Bounded** — mandate VCs cap amount/category/merchant/daily-cumulative; discount band clamped post-LLM; recommendations pass a deterministic affordability gate before acceptance.
-- ✅ **Gated** — four sequential gates: Zod firewall → semantic clamps → `checkMandateBounds` → linear FSM that throws `ProtocolViolationError` on any illegal jump.
-- ✅ **Audit trail** — hash-linked transition history + proof bundle (VC, JWS, order notes, gateway HMAC) rendered in the Proof Inspector.
-- ✅ **Graceful failure** — network drop after signing triggers `RECONCILIATION_CHALLENGE` → replayed settlement receipt **or** cryptographically signed void certificate (`tests/atomicity.test.ts`, chaos-fuzzer: 10,000 adversarial cases blocked).
+- **Explainable** — every decision carries a cached rationale surfaced as "Why?" cards; `/api/demo/run` returns the full `reasoning{}` block (intent decision, quote evaluation, pricing trace with clamp annotations).
+- **Bounded** — mandate VCs cap amount/category/merchant/daily-cumulative; discount band clamped post-LLM; recommendations pass a deterministic affordability gate before acceptance.
+- **Gated** — four sequential gates: Zod firewall → semantic clamps → `checkMandateBounds` → linear FSM that throws `ProtocolViolationError` on any illegal jump.
+- **Audit trail** — hash-linked transition history + proof bundle (VC, JWS, order notes, gateway HMAC) rendered in the Proof Inspector.
+- **Graceful failure** — network drop after signing triggers `RECONCILIATION_CHALLENGE` → replayed settlement receipt **or** cryptographically signed void certificate (`tests/atomicity.test.ts`, chaos-fuzzer: 10,000 adversarial cases blocked).
 
-### Protocol landscape mapping
+## Related Protocols
 
 | AgentPay concept | Aligned with |
 |---|---|
@@ -130,4 +128,4 @@ docs/adr/          # 14 architecture decision records
 
 ---
 
-Built for the Razorpay AI Buildathon. MIT licensed.
+MIT licensed.

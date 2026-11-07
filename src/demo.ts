@@ -8,7 +8,6 @@ import { verifyQuoteSignature } from './protocol/negotiation.js';
 async function runAutonomousDemo() {
   console.log('\n' + '='.repeat(80));
   console.log('  AGENTPAY: CRYPTOGRAPHICALLY VERIFIABLE AGENT-TO-AGENT CHECKOUT');
-  console.log('  Track 01: AI Growth & Agentic Commerce (UAP & Razorpay UPI Reserve Pay)');
   console.log('='.repeat(80) + '\n');
 
   // 1. PROVISIONING
